@@ -28,11 +28,11 @@ public class OrderService {
         Order order = new Order();
 
         for (Meal meal: orderDTO.getMeals()){
-            Meal existingMeal = restTemplate.getForObject("http://localhost:8081/meal/" + meal.getId(), Meal.class);
+            Meal existingMeal = restTemplate.getForObject("http://menu-service/meal/" + meal.getId(), Meal.class);
             order.getMeals().add(existingMeal);
         }
 
-        Employee receiver = restTemplate.getForObject("http://localhost:8082/employee/" + orderDTO.getReceiver().getId(), Employee.class);
+        Employee receiver = restTemplate.getForObject("http://employee-service/employee/" + orderDTO.getReceiver().getId(), Employee.class);
 
         order.setReceiver(receiver);
 
