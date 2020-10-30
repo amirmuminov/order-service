@@ -1,5 +1,8 @@
 package kz.muminov.orderservice.service;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
+import kz.muminov.orderservice.exception.DefaultException;
 import kz.muminov.orderservice.model.dto.OrderBillDTO;
 import kz.muminov.orderservice.model.dto.OrderDTO;
 import kz.muminov.orderservice.model.entity.Employee;
@@ -10,6 +13,7 @@ import kz.muminov.orderservice.repository.OrderRepository;
 import kz.muminov.orderservice.util.ExceptionUtils;
 import kz.muminov.orderservice.util.MessageCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -17,12 +21,22 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
     private final ExceptionUtils exceptionUtils;
 
+    @HystrixCommand(
+            fallbackMethod = "fallbackCreateOrder",
+            threadPoolProperties = {
+                    @HystrixProperty(name = "coreSize", value = "100"),
+                    @HystrixProperty(name = "maximumSize", value = "120"),
+                    @HystrixProperty(name = "maxQueueSize", value = "50"),
+                    @HystrixProperty(name = "allowMaximumSizeToDivergeFromCoreSize", value = "true")
+            }
+    )
     public Order createOrder(OrderDTO orderDTO){
 
         Order order = new Order();
@@ -81,6 +95,14 @@ public class OrderService {
 
         return orderRepository.save(order);
 
+    }
+
+    public Order fallbackCreateOrder(OrderDTO orderDTO, Throwable e){
+        Order order = new Order();
+        order.setId(-1L);
+        order.setStatus(OrderStatus.ERROR);
+        log.error(e.getMessage());
+        return order;
     }
 
 }
