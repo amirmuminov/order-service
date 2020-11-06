@@ -30,11 +30,10 @@ public class OrderService {
 
     @HystrixCommand(
             fallbackMethod = "fallbackCreateOrder",
+            threadPoolKey = "createOrder",
             threadPoolProperties = {
                     @HystrixProperty(name = "coreSize", value = "100"),
-                    @HystrixProperty(name = "maximumSize", value = "120"),
-                    @HystrixProperty(name = "maxQueueSize", value = "50"),
-                    @HystrixProperty(name = "allowMaximumSizeToDivergeFromCoreSize", value = "true")
+                    @HystrixProperty(name = "maxQueueSize", value = "50")
             }
     )
     public Order createOrder(OrderDTO orderDTO){
@@ -46,12 +45,25 @@ public class OrderService {
             order.getMeals().add(existingMeal);
         }
 
-        Employee receiver = restTemplate.getForObject("http://employee-service/employee/" + orderDTO.getReceiver().getId(), Employee.class);
+        Employee receiver = getEmployee(orderDTO.getReceiver().getId());
 
         order.setReceiver(receiver);
 
         return orderRepository.save(order);
 
+    }
+
+    @HystrixCommand(
+            fallbackMethod = "getEmployeeFallback",
+            threadPoolKey = "getEmployee",
+            threadPoolProperties = {
+                    @HystrixProperty(name = "coreSize", value = "100"),
+                    @HystrixProperty(name = "maxQueueSize", value = "50")
+            }
+    )
+    private Employee getEmployee(Long id){
+        Employee receiver = restTemplate.getForObject("http://employee-service/employee/" + id, Employee.class);
+        return receiver;
     }
 
     public OrderBillDTO payBill(Long id){
@@ -95,6 +107,12 @@ public class OrderService {
 
         return orderRepository.save(order);
 
+    }
+
+    public Employee getEmployeeFallback(Long id){
+        Employee employee = new Employee();
+        employee.setId(-1L);
+        return employee;
     }
 
     public Order fallbackCreateOrder(OrderDTO orderDTO, Throwable e){
