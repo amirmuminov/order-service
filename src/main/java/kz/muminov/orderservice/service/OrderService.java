@@ -2,7 +2,6 @@ package kz.muminov.orderservice.service;
 
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
-import kz.muminov.orderservice.exception.DefaultException;
 import kz.muminov.orderservice.model.dto.OrderBillDTO;
 import kz.muminov.orderservice.model.dto.OrderDTO;
 import kz.muminov.orderservice.model.entity.Employee;
@@ -14,8 +13,13 @@ import kz.muminov.orderservice.util.ExceptionUtils;
 import kz.muminov.orderservice.util.MessageCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 
 import java.time.LocalDateTime;
 
@@ -40,8 +44,19 @@ public class OrderService {
 
         Order order = new Order();
 
+        String credentials = "rest-client:passwordd";
+        String encodedCredentials = new String(Base64.encodeBase64(credentials.getBytes()));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", "Basic " + encodedCredentials);
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
         for (Meal meal: orderDTO.getMeals()){
-            Meal existingMeal = restTemplate.getForObject("http://menu-service/meal/" + meal.getId(), Meal.class);
+            Meal existingMeal = restTemplate.exchange("http://menu-service/meal/" + meal.getId(),
+                    HttpMethod.GET,
+                    entity,
+                    Meal.class).getBody();
             order.getMeals().add(existingMeal);
         }
 
@@ -62,7 +77,19 @@ public class OrderService {
             }
     )
     private Employee getEmployee(Long id){
-        Employee receiver = restTemplate.getForObject("http://employee-service/employee/" + id, Employee.class);
+
+        String apiCredentials = "rest-client:password";
+        String encodedCredentials = new String(Base64.encodeBase64(apiCredentials.getBytes()));
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add("Authorization", "Basic " + encodedCredentials);
+
+        HttpEntity<String> httpEntity = new HttpEntity<>(httpHeaders);
+
+        Employee receiver = restTemplate.exchange("http://employee-service/employee/" + id,
+                HttpMethod.GET,
+                httpEntity,
+                Employee.class).getBody();
         return receiver;
     }
 
