@@ -9,6 +9,7 @@ import kz.muminov.orderservice.model.entity.Meal;
 import kz.muminov.orderservice.model.entity.Order;
 import kz.muminov.orderservice.model.enums.OrderStatus;
 import kz.muminov.orderservice.repository.OrderRepository;
+import kz.muminov.orderservice.service.kafka.OrderCreateServiceProducer;
 import kz.muminov.orderservice.util.ExceptionUtils;
 import kz.muminov.orderservice.util.MessageCode;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
     private final ExceptionUtils exceptionUtils;
+    private final OrderCreateServiceProducer orderCreateServiceProducer;
 
     @HystrixCommand(
             fallbackMethod = "fallbackCreateOrder",
@@ -63,6 +65,8 @@ public class OrderService {
         Employee receiver = getEmployee(orderDTO.getReceiver().getId());
 
         order.setReceiver(receiver);
+
+        orderCreateServiceProducer.mealQuantity(order);
 
         return orderRepository.save(order);
 

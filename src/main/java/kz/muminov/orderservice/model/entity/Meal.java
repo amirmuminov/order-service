@@ -28,4 +28,6 @@ public class Meal {
     @NotEmpty
     private String description;
 
+    private int quantity;
+
 }
